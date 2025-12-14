@@ -7,6 +7,17 @@ module.exports = (sequelize) => {
       primaryKey: true,
       autoIncrement: true
     },
+    // START: Penambahan user_id
+    user_id: { 
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: 'users', // Merujuk ke nama tabel Users
+        key: 'id'
+      },
+      onDelete: 'CASCADE' // Opsional: Jika user dihapus, data sampah yang dia miliki juga dihapus
+    },
+    // END: Penambahan user_id
     jenis: { // "jenis sampah"
       type: DataTypes.STRING,
       allowNull: false,

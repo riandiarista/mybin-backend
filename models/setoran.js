@@ -7,6 +7,17 @@ module.exports = (sequelize) => {
       primaryKey: true,
       autoIncrement: true
     },
+    // START: Penambahan user_id
+    user_id: { 
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: 'users', // Merujuk ke nama tabel Users
+        key: 'id'
+      },
+      onDelete: 'CASCADE' // Opsional: Jika user dihapus, setoran yang dia buat juga dihapus
+    },
+    // END: Penambahan user_id
     tanggal: { // "Tanggal"
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW
@@ -19,7 +30,7 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING,
       allowNull: true
     },
-    sampahId: { // "sampah_id"
+    sampahId: { // "sampah_id" (FK ke tabel Sampahs)
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
