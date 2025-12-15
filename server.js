@@ -15,6 +15,7 @@ app.use(express.json());
 // Routes
 const authRoutes = require('./routes/auth');
 const binsRoutes = require('./routes/bins');
+const sampahRoutes = require('./routes/sampah');
 
 // Gunakan prefix /api agar konsisten
 // Mount auth routes under /api so Android client using /api/login will reach the handler
@@ -22,6 +23,7 @@ app.use('/api', authRoutes);
 // Keep backward-compatible mount so requests to /api/auth/login still work
 app.use('/api/auth', authRoutes);
 app.use('/api/bins', binsRoutes);
+app.use('/api/sampah', sampahRoutes);
 
 // Error handler middleware
 app.use(errorHandler);
