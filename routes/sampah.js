@@ -13,8 +13,8 @@ router.get('/', auth, ctrl.listSampah);       // Mengambil daftar sampah
 router.post('/', auth, ctrl.createSampah);    // Menambah data sampah baru
 
 // Tambahkan route CRUD lainnya agar lengkap
-router.get('/:id', auth, ctrl.getSampahById);
-router.put('/:id', auth, ctrl.updateSampah);
-router.delete('/:id', auth, ctrl.deleteSampah);
+router.get('/:id', auth, ctrl.getSampahById); // GET Detail
+router.put('/:id', auth, ctrl.updateSampah);  // UPDATE data
+router.delete('/:id', auth, ctrl.deleteSampah); // DELETE data
 
 module.exports = router;
