@@ -1,7 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const bcrypt = require('bcryptjs'); // jangan lupa require bcrypt
+const bcrypt = require('bcryptjs'); 
 const { sequelize, User } = require('./models');
 const errorHandler = require('./middleware/errorMiddleware');
 
@@ -18,9 +18,7 @@ const binsRoutes = require('./routes/bins');
 const sampahRoutes = require('./routes/sampah');
 
 // Gunakan prefix /api agar konsisten
-// Mount auth routes under /api so Android client using /api/login will reach the handler
 app.use('/api', authRoutes);
-// Keep backward-compatible mount so requests to /api/auth/login still work
 app.use('/api/auth', authRoutes);
 app.use('/api/bins', binsRoutes);
 app.use('/api/sampah', sampahRoutes);
@@ -28,19 +26,38 @@ app.use('/api/sampah', sampahRoutes);
 // Error handler middleware
 app.use(errorHandler);
 
-// Fungsi untuk membuat admin jika belum ada
-async function createAdmin() {
+/**
+ * Perbaikan: Fungsi untuk membuat user default (Admin & Superbin)
+ * Ditambahkan pengecekan untuk role superbin sesuai permintaan.
+ */
+async function createDefaultUsers() {
   try {
+    // 1. Buat Admin jika belum ada
     const adminExists = await User.findOne({ where: { username: 'admin' } });
     if (!adminExists) {
       const hashedPassword = await bcrypt.hash('admin123', 10);
       await User.create({ username: 'admin', password: hashedPassword });
       console.log('✅ Admin user dibuat: admin / admin123');
     } else {
-      console.log('ℹ️  Admin user sudah ada, skip pembuatan');
+      console.log('ℹ️  Admin user sudah ada');
+    }
+
+    // 2. Buat Superbin jika belum ada
+    const superbinExists = await User.findOne({ where: { username: 'superbin' } });
+    if (!superbinExists) {
+      const hashedPassword = await bcrypt.hash('superbin123', 10);
+      // Catatan: Jika tabel User Anda sudah punya kolom 'role', 
+      // Anda bisa menambahkan role: 'superbin' di sini.
+      await User.create({ 
+        username: 'superbin', 
+        password: hashedPassword 
+      });
+      console.log('✅ Superbin user dibuat: superbin / superbin123');
+    } else {
+      console.log('ℹ️  Superbin user sudah ada');
     }
   } catch (error) {
-    console.error('❌ Gagal membuat admin:', error);
+    console.error('❌ Gagal membuat user default:', error);
   }
 }
 
@@ -52,11 +69,11 @@ async function startServer() {
     console.log('✅ Database berhasil terhubung.');
 
     // Sync database (buat tabel jika belum ada)
-    await sequelize.sync({ alter: true }); // paksa update tabel jika perlu
+    await sequelize.sync({ alter: true }); 
     console.log('🧩 Database telah disinkronisasi.');
 
-    // Buat admin otomatis
-    await createAdmin();
+    // Menjalankan fungsi pembuatan user default
+    await createDefaultUsers();
 
     // Jalankan server
     app.listen(PORT, () => {
