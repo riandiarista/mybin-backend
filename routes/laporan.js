@@ -1,10 +1,11 @@
-// routes/laporan.js
 const express = require('express');
 const router = express.Router();
 const laporanController = require('../controllers/laporanController');
 const authMiddleware = require('../middleware/authMiddleware'); 
 
-router.use(authMiddleware.protect); // Semua route laporan harus dilindungi (asumsi authMiddleware ada)
+// PERBAIKAN: Gunakan authMiddleware langsung jika exports-nya adalah fungsi tunggal
+// Jika di authMiddleware.js menggunakan module.exports = function..., maka jangan pakai .protect
+router.use(authMiddleware); 
 
 // GET /api/laporan/saldo-poin
 router.get('/saldo-poin', laporanController.getSaldoPoin);
@@ -14,8 +15,5 @@ router.get('/riwayat-setoran', laporanController.getRiwayatSetoran);
 
 // GET /api/laporan/riwayat-exchange
 router.get('/riwayat-exchange', laporanController.getRiwayatExchange);
-
-// Endpoint untuk Export (akan diimplementasikan di langkah selanjutnya)
-// router.get('/export', laporanController.exportLaporan); 
 
 module.exports = router;

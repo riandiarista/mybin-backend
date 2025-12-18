@@ -12,10 +12,12 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// Routes
+// Routes Imports
 const authRoutes = require('./routes/auth');
 const binsRoutes = require('./routes/bins');
 const sampahRoutes = require('./routes/sampah');
+// PENAMBAHAN: Import file rute API utama untuk Edukasi dan Laporan
+const apiRoutes = require('./routes/apiRoutes');
 
 // Gunakan prefix /api agar konsisten
 app.use('/api', authRoutes);
@@ -23,12 +25,14 @@ app.use('/api/auth', authRoutes);
 app.use('/api/bins', binsRoutes);
 app.use('/api/sampah', sampahRoutes);
 
-// Error handler middleware
+// PENAMBAHAN: Daftarkan rute API utama agar endpoint /api/edukasi aktif
+app.use('/api', apiRoutes);
+
+// Error handler middleware (Harus diletakkan setelah rute)
 app.use(errorHandler);
 
 /**
- * Perbaikan: Fungsi untuk membuat user default (Admin & Superbin)
- * Ditambahkan pengecekan untuk role superbin sesuai permintaan.
+ * Fungsi untuk membuat user default (Admin & Superbin)
  */
 async function createDefaultUsers() {
   try {
@@ -46,8 +50,6 @@ async function createDefaultUsers() {
     const superbinExists = await User.findOne({ where: { username: 'superbin' } });
     if (!superbinExists) {
       const hashedPassword = await bcrypt.hash('superbin123', 10);
-      // Catatan: Jika tabel User Anda sudah punya kolom 'role', 
-      // Anda bisa menambahkan role: 'superbin' di sini.
       await User.create({ 
         username: 'superbin', 
         password: hashedPassword 
