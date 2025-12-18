@@ -5,6 +5,16 @@ const bcrypt = require('bcryptjs');
 const { sequelize, User } = require('./models');
 const errorHandler = require('./middleware/errorMiddleware');
 
+// --- TAMBAHAN: Inisialisasi Firebase Admin ---
+const admin = require('firebase-admin');
+const serviceAccount = require('./firebase-admin-key.json'); // Pastikan file ini ada di folder root 
+
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
+console.log('🔥 Firebase Admin SDK berhasil diinisialisasi.');
+// ----------------------------------------------
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -16,7 +26,6 @@ app.use(express.json());
 const authRoutes = require('./routes/auth');
 const binsRoutes = require('./routes/bins');
 const sampahRoutes = require('./routes/sampah');
-// PENAMBAHAN: Import file rute API utama untuk Edukasi dan Laporan
 const apiRoutes = require('./routes/apiRoutes');
 
 // Gunakan prefix /api agar konsisten
@@ -24,8 +33,6 @@ app.use('/api', authRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/bins', binsRoutes);
 app.use('/api/sampah', sampahRoutes);
-
-// PENAMBAHAN: Daftarkan rute API utama agar endpoint /api/edukasi aktif
 app.use('/api', apiRoutes);
 
 // Error handler middleware (Harus diletakkan setelah rute)
@@ -71,6 +78,7 @@ async function startServer() {
     console.log('✅ Database berhasil terhubung.');
 
     // Sync database (buat tabel jika belum ada)
+    // Kolom fcm_token akan dibuat otomatis di tabel Users 
     await sequelize.sync({ alter: true }); 
     console.log('🧩 Database telah disinkronisasi.');
 
