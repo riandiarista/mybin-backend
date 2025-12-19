@@ -1,17 +1,21 @@
 const express = require('express');
 const router = express.Router();
 const ApiController = require('../controllers/apiController');
-const authMiddleware = require('../middleware/authMiddleware'); // Pastikan middleware ini di-import
+const setoranController = require('../controllers/setoranController'); // IMPORT CONTROLLER BARU
+const authMiddleware = require('../middleware/authMiddleware'); //
 
 // --- ENDPOINT EDUKASI ---
 router.get('/data', ApiController.getData);
 router.post('/data', ApiController.postData);
 
-// PERBAIKAN: Menggunakan ApiController.postData (karena createEdukasi tidak ada di Controller)
+// PERBAIKAN: Menggunakan ApiController.postData
 router.post('/edukasi', authMiddleware, ApiController.postData);
-
-// Endpoint untuk mengambil list berita
 router.get('/edukasi', authMiddleware, ApiController.getData);
+
+// --- ENDPOINT SETORAN (PERBAIKAN UNTUK ANDROID) ---
+// Rute ini menangani pemindahan data dari AddAddressScreen.kt ke tabel setorans
+router.post('/setoran', authMiddleware, setoranController.createSetoran); 
+router.get('/setoran', authMiddleware, setoranController.listSetoran);
 
 // --- ROUTE LAINNYA (TETAP DIJAGA) ---
 const laporanRoutes = require('./laporan');
