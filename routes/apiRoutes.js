@@ -12,6 +12,10 @@ router.post('/data', ApiController.postData);
 router.post('/edukasi', authMiddleware, ApiController.postData);
 router.get('/edukasi', authMiddleware, ApiController.getData);
 
+// TAMBAHAN: Endpoint untuk Update dan Delete agar fitur Edit di BeritaAndaScreen berfungsi
+router.put('/edukasi/:id', authMiddleware, ApiController.updateData); 
+router.delete('/edukasi/:id', authMiddleware, ApiController.deleteData);
+
 // --- ENDPOINT SETORAN (PERBAIKAN UNTUK ANDROID) ---
 // Rute ini menangani pemindahan data dari AddAddressScreen.kt ke tabel setorans
 router.post('/setoran', authMiddleware, setoranController.createSetoran); 
