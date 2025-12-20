@@ -5,19 +5,23 @@ const setoranController = require('../controllers/setoranController'); // IMPORT
 const authMiddleware = require('../middleware/authMiddleware'); //
 
 // --- ENDPOINT EDUKASI ---
+// Mengizinkan pengambilan data tanpa token (opsional) agar NewsScreen langsung tampil
 router.get('/data', ApiController.getData);
 router.post('/data', ApiController.postData);
 
 // PERBAIKAN: Menggunakan ApiController.postData
+// POST, PUT, dan DELETE tetap butuh login (authMiddleware) untuk keamanan
 router.post('/edukasi', authMiddleware, ApiController.postData);
-router.get('/edukasi', authMiddleware, ApiController.getData);
+
+// CATATAN: authMiddleware dihapus dari GET /edukasi agar NewsScreen bisa fetch data dengan mudah
+// Jika Anda ingin tetap diproteksi, biarkan authMiddleware terpasang.
+router.get('/edukasi', ApiController.getData); 
 
 // TAMBAHAN: Endpoint untuk Update dan Delete agar fitur Edit di BeritaAndaScreen berfungsi
 router.put('/edukasi/:id', authMiddleware, ApiController.updateData); 
 router.delete('/edukasi/:id', authMiddleware, ApiController.deleteData);
 
 // --- ENDPOINT SETORAN (PERBAIKAN UNTUK ANDROID) ---
-// Rute ini menangani pemindahan data dari AddAddressScreen.kt ke tabel setorans
 router.post('/setoran', authMiddleware, setoranController.createSetoran); 
 router.get('/setoran', authMiddleware, setoranController.listSetoran);
 
