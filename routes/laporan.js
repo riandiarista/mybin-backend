@@ -1,19 +1,12 @@
+// routes/laporan.js
 const express = require('express');
 const router = express.Router();
+// 1. Pastikan path file controller sudah benar (../controllers/laporanController)
 const laporanController = require('../controllers/laporanController');
-const authMiddleware = require('../middleware/authMiddleware'); 
+const authMiddleware = require('../middleware/authMiddleware');
 
-// PERBAIKAN: Gunakan authMiddleware langsung jika exports-nya adalah fungsi tunggal
-// Jika di authMiddleware.js menggunakan module.exports = function..., maka jangan pakai .protect
-router.use(authMiddleware); 
-
-// GET /api/laporan/saldo-poin
-router.get('/saldo-poin', laporanController.getSaldoPoin);
-
-// GET /api/laporan/riwayat-setoran
-router.get('/riwayat-setoran', laporanController.getRiwayatSetoran);
-
-// GET /api/laporan/riwayat-exchange
-router.get('/riwayat-exchange', laporanController.getRiwayatExchange);
+// 2. Pastikan laporanController.getLaporanUser TIDAK bernilai undefined
+// Periksa apakah nama fungsinya SAMA dengan yang ada di file controller
+router.get('/history', authMiddleware, laporanController.getLaporanUser);
 
 module.exports = router;

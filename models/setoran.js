@@ -23,7 +23,7 @@ module.exports = (sequelize) => {
       defaultValue: DataTypes.NOW
     },
     status: { // "Status"
-      type: DataTypes.ENUM('menunggu', 'dijemput', 'selesai'),
+      type: DataTypes.ENUM('menunggu', 'ditolak', 'selesai'),
       defaultValue: 'menunggu'
     },
     lokasi: { // "Lokasi"
