@@ -1,42 +1,30 @@
-const { Setoran, Sampah } = require('../models');
+const { Setoran, Sampah, User } = require('../models');
 
 module.exports = {
   // 1. TAMBAH PENYETORAN (Proses Checkout dari AddAddressScreen)
   createSetoran: async (req, res) => {
     try {
-      // Input dari Frontend: sampahIds (String dipisah koma), totalKoin, lokasi
-      const { sampahIds, totalKoin, lokasi, tanggal } = req.body;
-      
-      // Mengambil userId dari user yang sedang login (via authMiddleware)
+      const { sampahIds, lokasi, tanggal } = req.body;
       const userId = req.user.id; 
 
       if (!sampahIds) {
         return res.status(400).json({ message: 'Daftar ID Sampah tidak boleh kosong' });
       }
 
-      // Konversi string "1,2,3" menjadi array [1, 2, 3] agar bisa di-loop
       const idArray = sampahIds.split(',').map(id => id.trim());
-
       const results = [];
 
-      // Melakukan pemindahan data secara iteratif (looping)
       for (const sId of idArray) {
-        // Cek validitas ID Sampah di tabel sampahs
         const sampahExists = await Sampah.findByPk(sId);
         
         if (sampahExists) {
-          // Buat baris baru di tabel setorans
           const newSetoran = await Setoran.create({
-            user_id: userId,        // Menyambungkan ke ID User
-            sampahId: sId,          // Menyambungkan ke ID Sampah
-            lokasi: lokasi,         // Alamat dari AddAddressScreen
+            user_id: userId,
+            sampahId: sId,
+            lokasi: lokasi,
             tanggal: tanggal || new Date(),
-            status: 'menunggu'      // Status awal default
+            status: 'menunggu' // Status awal saat user menyetor
           });
-
-          // Jika Anda ingin menyimpan total koin sebagai catatan di setiap baris setoran, 
-          // pastikan kolom 'coin' atau kolom serupa ada di model Setoran Anda.
-          
           results.push(newSetoran);
         }
       }
@@ -49,10 +37,7 @@ module.exports = {
 
     } catch (error) {
       console.error('ERROR CREATE SETORAN:', error);
-      res.status(500).json({ 
-        message: 'Gagal memproses setoran', 
-        error: error.message 
-      });
+      res.status(500).json({ message: 'Gagal memproses setoran', error: error.message });
     }
   },
 
@@ -66,7 +51,6 @@ module.exports = {
           {
             model: Sampah,
             as: 'sampah',
-            // Mengambil detail dari tabel sampahs untuk ditampilkan di DataSetoranScreen
             attributes: ['jenis', 'berat', 'coin', 'foto'] 
           }
         ],
@@ -79,5 +63,64 @@ module.exports = {
     }
   },
 
-  // ... fungsi updateStatus dan deleteSetoran tetap menggunakan logic dasar Sequelize ...
+  // 3. UPDATE STATUS (Logika Krusial Penambahan Poin ke Tabel User)
+  updateStatus: async (req, res) => {
+    try {
+      const { id } = req.params; // ID Setoran
+      const { status } = req.body; // Status baru dari Admin (misal: 'selesai')
+
+      // Cari data setoran beserta data koin dari tabel sampah
+      const setoran = await Setoran.findByPk(id, {
+        include: [{ model: Sampah, as: 'sampah' }]
+      });
+
+      if (!setoran) {
+        return res.status(404).json({ message: 'Data setoran tidak ditemukan' });
+      }
+
+      const oldStatus = setoran.status;
+
+      // LOGIKA UTAMA: Jika status berubah menjadi 'selesai' dan sebelumnya belum selesai
+      if (status === 'selesai' && oldStatus !== 'selesai') {
+        const user = await User.findByPk(setoran.user_id);
+        
+        if (user && setoran.sampah) {
+          // Ambil koin dari tabel sampah dan tambahkan ke kolom total_poin_user
+          const koinMasuk = parseFloat(setoran.sampah.coin) || 0;
+          user.total_poin_user = parseFloat(user.total_poin_user) + koinMasuk;
+          
+          await user.save();
+          console.log(`Poin berhasil ditambahkan ke ${user.username}: +${koinMasuk}`);
+        }
+      }
+
+      // Update status setoran di database
+      setoran.status = status;
+      await setoran.save();
+
+      res.json({ 
+        message: `Status setoran berhasil diubah menjadi ${status}`,
+        current_user_poin: status === 'selesai' ? "Updated" : "No Change"
+      });
+
+    } catch (error) {
+      console.error('ERROR UPDATE STATUS:', error);
+      res.status(500).json({ message: 'Gagal update status', error: error.message });
+    }
+  },
+
+  // 4. DELETE SETORAN
+  deleteSetoran: async (req, res) => {
+    try {
+      const { id } = req.params;
+      const setoran = await Setoran.findByPk(id);
+      
+      if (!setoran) return res.status(404).json({ message: 'Data tidak ditemukan' });
+
+      await setoran.destroy();
+      res.json({ message: 'Setoran berhasil dihapus' });
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  }
 };

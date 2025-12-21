@@ -1,5 +1,3 @@
-// models/exchange.js
-
 module.exports = (sequelize, DataTypes) => { 
     const Exchange = sequelize.define('Exchange', {
         id: { 
@@ -10,16 +8,22 @@ module.exports = (sequelize, DataTypes) => {
         user_id: {
             type: DataTypes.INTEGER,
             allowNull: false,
+            references: {
+                model: 'Users', // Pastikan nama tabel user Anda benar
+                key: 'id'
+            }
         },
         amount_poin: {
-            type: DataTypes.DECIMAL(10, 2),
+            // Menggunakan INTEGER karena poin biasanya tidak memiliki desimal
+            type: DataTypes.INTEGER,
             allowNull: false,
         },
         amount_rupiah: { 
-            type: DataTypes.DECIMAL(10, 2),
+            // Menggunakan INTEGER karena perbandingan 1:1 (Rp 1.000, dst)
+            type: DataTypes.INTEGER,
             allowNull: false,
         },
-        bank_detail: {
+        phone_number: { // PERUBAHAN: Pengganti bank_detail
             type: DataTypes.STRING,
             allowNull: false,
         },
@@ -29,12 +33,20 @@ module.exports = (sequelize, DataTypes) => {
             allowNull: false,
         },
         status: {
-            type: DataTypes.ENUM('Berhasil', 'Gagal'), 
-            defaultValue: 'Berhasil', 
+            // Menambahkan 'Pending' agar ada proses verifikasi admin
+            type: DataTypes.ENUM('Pending', 'Berhasil', 'Gagal'), 
+            defaultValue: 'Pending', 
             allowNull: false,
         }
     }, {
-        freezeTableName: true
+        freezeTableName: true,
+        timestamps: true // Sangat disarankan untuk audit data di Galaloc.std
     });
+
+    // Menambahkan relasi agar bisa di-join dengan tabel User
+    Exchange.associate = (models) => {
+        Exchange.belongsTo(models.User, { foreignKey: 'user_id', as: 'user' });
+    };
+
     return Exchange;
 };

@@ -23,20 +23,23 @@ module.exports = {
 
       // Hash password
       const hashedPassword = await bcrypt.hash(password, 10);
-      const newUser = await User.create({ username, password: hashedPassword });
+      
+      // Saat register, total_poin_user otomatis 0 (sesuai default value di database)
+      const newUser = await User.create({ 
+        username, 
+        password: hashedPassword,
+        total_poin_user: 0 
+      });
 
       res.status(201).json({
         message: 'Registrasi berhasil',
         user: { id: newUser.id, username: newUser.username },
       });
-        // Memastikan tidak ada request yang menggantung
-        next(); 
+      
+      if (next) next(); 
     } catch (error) {
       console.error('🔥 ERROR REGISTER:', error);
-      res.status(500).json({
-        message: 'Terjadi kesalahan server',
-        error: error.message, // tampilkan pesan error untuk debugging
-      });
+      res.status(500).json({ message: 'Terjadi kesalahan server', error: error.message });
     }
   },
 
@@ -57,7 +60,7 @@ module.exports = {
         return res.status(404).json({ message: 'User tidak ditemukan' });
       }
 
-      // Compare password
+      // Bandingkan password
       const isMatch = await bcrypt.compare(password, user.password);
       if (!isMatch) {
         return res.status(401).json({ message: 'Password salah' });
@@ -66,50 +69,67 @@ module.exports = {
       // Buat token JWT 
       const token = jwt.sign(
         { id: user.id, username: user.username },
-        'secret_key', // <--- FIX: HANYA GUNAKAN HARDCODED SECRET KEY INI
+        'secret_key', 
         { expiresIn: '1h', jwtid: uuidv4(), algorithm: 'HS256' }
       );
 
-      // Debug log (hanya untuk development)
-      try {
-        const decoded = jwt.decode(token);
-        console.log(`🔐 [auth] Login successful for=${user.username} jti=${decoded && decoded.jti ? decoded.jti : 'n/a'}`);
-      } catch (e) {
-        console.log('🔐 [auth] Login successful (failed to decode token for logging)');
-      }
-
+      // RESPON: Sekarang menyertakan total_poin_user agar saldo muncul otomatis di Android
       res.json({
         message: 'Login berhasil',
         token,
         user: {
           id: user.id,
           username: user.username,
+          total_poin_user: user.total_poin_user // <--- PENTING: Untuk menampilkan 27.000 (atau saldo terbaru)
         },
       });
-        // Memastikan tidak ada request yang menggantung
-        next(); 
+
+      if (next) next(); 
     } catch (error) {
       console.error('🔥 ERROR LOGIN:', error);
-      res.status(500).json({
-        message: 'Terjadi kesalahan server',
-        error: error.message,
-      });
+      res.status(500).json({ message: 'Terjadi kesalahan server', error: error.message });
     }
   },
 
   // ===============================
-  // UPDATE FCM TOKEN (TAMBAHAN)
+  // GET PROFILE (FUNGSI UNTUK SINKRONISASI REAL-TIME)
+  // ===============================
+  // Digunakan oleh Android (via loadUserBalance) untuk mengambil data dari tabel users
+  getProfile: async (req, res) => {
+    try {
+      // req.user.id didapatkan dari authMiddleware (JWT Decode)
+      const userId = req.user.id;
+      
+      const user = await User.findByPk(userId, {
+        attributes: ['id', 'username', 'total_poin_user'] 
+      });
+
+      if (!user) {
+        return res.status(404).json({ message: 'User tidak ditemukan' });
+      }
+
+      res.json({
+        message: 'Success',
+        data: user // Mengirimkan saldo terbaru dari kolom total_poin_user
+      });
+    } catch (error) {
+      console.error('🔥 ERROR GET PROFILE:', error);
+      res.status(500).json({ message: 'Gagal mengambil profil', error: error.message });
+    }
+  },
+
+  // ===============================
+  // UPDATE FCM TOKEN
   // ===============================
   updateFCMToken: async (req, res) => {
     try {
       const { fcm_token } = req.body;
-      const userId = req.user.id; // Diambil dari token yang sudah didekode oleh authMiddleware
+      const userId = req.user.id;
 
       if (!fcm_token) {
         return res.status(400).json({ message: 'FCM Token wajib disertakan' });
       }
 
-      // Update kolom fcm_token pada user yang sedang login
       const [updated] = await User.update(
         { fcm_token },
         { where: { id: userId } }
@@ -122,10 +142,7 @@ module.exports = {
       return res.status(404).json({ message: 'User tidak ditemukan' });
     } catch (error) {
       console.error('🔥 ERROR UPDATE FCM TOKEN:', error);
-      res.status(500).json({
-        message: 'Terjadi kesalahan server saat update token',
-        error: error.message,
-      });
+      res.status(500).json({ message: 'Terjadi kesalahan server saat update token', error: error.message });
     }
   }
 };
