@@ -20,19 +20,25 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors());
-app.use(express.json());
+
+// PERUBAHAN 1: Tambahkan Limit Payload (Penting untuk upload gambar Base64) 
+app.use(express.json({ limit: '50mb' })); 
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Routes Imports
 const authRoutes = require('./routes/auth');
 const binsRoutes = require('./routes/bins');
-const sampahRoutes = require('./routes/sampah');
+const sampahRoutes = require('./routes/sampah'); // Ini merujuk ke file router sampah yang baru diperbarui 
 const apiRoutes = require('./routes/apiRoutes');
 
 // Gunakan prefix /api agar konsisten
 app.use('/api', authRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/bins', binsRoutes);
-app.use('/api/sampah', sampahRoutes);
+
+// PERUBAHAN 2: Pastikan endpoint sampah menggunakan router yang benar 
+app.use('/api/sampah', sampahRoutes); 
+
 app.use('/api', apiRoutes);
 
 // Error handler middleware (Harus diletakkan setelah rute)
@@ -43,7 +49,6 @@ app.use(errorHandler);
  */
 async function createDefaultUsers() {
   try {
-    // 1. Buat Admin jika belum ada
     const adminExists = await User.findOne({ where: { username: 'admin' } });
     if (!adminExists) {
       const hashedPassword = await bcrypt.hash('admin123', 10);
@@ -53,7 +58,6 @@ async function createDefaultUsers() {
       console.log('ℹ️  Admin user sudah ada');
     }
 
-    // 2. Buat Superbin jika belum ada
     const superbinExists = await User.findOne({ where: { username: 'superbin' } });
     if (!superbinExists) {
       const hashedPassword = await bcrypt.hash('superbin123', 10);
@@ -77,15 +81,12 @@ async function startServer() {
     await sequelize.authenticate();
     console.log('✅ Database berhasil terhubung.');
 
-    // Sync database (buat tabel jika belum ada)
-    // Kolom fcm_token akan dibuat otomatis di tabel Users 
+    // Sync database (menggunakan alter: true agar perubahan tipe data 'foto' di model diterapkan) 
     await sequelize.sync({ alter: true }); 
     console.log('🧩 Database telah disinkronisasi.');
 
-    // Menjalankan fungsi pembuatan user default
     await createDefaultUsers();
 
-    // Jalankan server
     app.listen(PORT, () => {
       console.log(`🚀 Server berjalan di http://localhost:${PORT}`);
     });

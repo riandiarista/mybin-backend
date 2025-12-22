@@ -7,7 +7,7 @@ module.exports = (sequelize) => {
       primaryKey: true,
       autoIncrement: true
     },
-    // START: Penambahan user_id
+    // Menghubungkan data sampah dengan pemiliknya (User)
     user_id: { 
       type: DataTypes.INTEGER,
       allowNull: false,
@@ -15,9 +15,8 @@ module.exports = (sequelize) => {
         model: 'users', // Merujuk ke nama tabel Users
         key: 'id'
       },
-      onDelete: 'CASCADE' // Jika user dihapus, data sampah miliknya juga terhapus
+      onDelete: 'CASCADE' // Jika user dihapus, data sampah miliknya otomatis terhapus
     },
-    // END: Penambahan user_id
     jenis: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -38,26 +37,29 @@ module.exports = (sequelize) => {
       defaultValue: 0,
       validate: { isInt: { msg: "Coin harus berupa angka bulat" } }
     },
-    // PERUBAHAN UTAMA: Penambahan kolom status untuk validasi Exchange
+    // Status digunakan untuk validasi apakah koin sudah bisa ditukarkan (Exchange)
     status: {
       type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: 'selesai', // Status default agar data yang sudah ada bisa ditukarkan
+      defaultValue: 'selesai', 
       validate: {
         notEmpty: { msg: "Status tidak boleh kosong" },
         isIn: {
-          args: [['pending', 'selesai', 'ditolak']], // Daftar status yang diizinkan
+          args: [['pending', 'selesai', 'ditolak']], 
           msg: "Status harus antara pending, selesai, atau ditolak"
         }
       }
     },
+    // PERUBAHAN DI SINI:
+    // Menggunakan TEXT('long') agar database sanggup menyimpan string Base64 dari foto
+    // yang ukurannya sangat besar (ratusan ribu hingga jutaan karakter).
     foto: {
-      type: DataTypes.STRING,
+      type: DataTypes.TEXT('long'),
       allowNull: true
     }
   }, {
     tableName: 'sampahs',
-    timestamps: true // createdAt & updatedAt otomatis dibuat
+    timestamps: true // Mengaktifkan createdAt & updatedAt otomatis
   });
 
   return Sampah;
