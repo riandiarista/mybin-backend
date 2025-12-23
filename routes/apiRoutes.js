@@ -7,7 +7,7 @@ const authMiddleware = require('../middleware/authMiddleware');
 const exchangeRoutes = require('./exchange');
 const laporanRoutes = require('./laporan');
 
-// --- ENDPOINT AUTH & PROFILE (Guna Sinkronisasi Saldo 27.000) ---
+// --- ENDPOINT AUTH & PROFILE ---
 // Jalur: GET /api/auth/me
 router.get('/auth/me', authMiddleware, authController.getProfile);
 
@@ -22,8 +22,11 @@ router.delete('/edukasi/:id', authMiddleware, ApiController.deleteData);
 // --- ENDPOINT SETORAN ---
 router.post('/setoran', authMiddleware, setoranController.createSetoran); 
 router.get('/setoran', authMiddleware, setoranController.listSetoran);
-// PERUBAHAN: Menambahkan rute DELETE untuk menghapus data setoran berdasarkan ID
 router.delete('/setoran/:id', authMiddleware, setoranController.deleteSetoran);
+
+// PERUBAHAN KRUSIAL: Menambahkan rute PUT untuk update status (Verifikasi/Tolak)
+// Jalur: PUT /api/setoran/status/:id
+router.put('/setoran/status/:id', authMiddleware, setoranController.updateStatus);
 
 // --- PENGGUNAAN MODUL (Clean Architecture) ---
 router.use('/laporan', laporanRoutes); 
