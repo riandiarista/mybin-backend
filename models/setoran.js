@@ -7,39 +7,53 @@ module.exports = (sequelize) => {
       primaryKey: true,
       autoIncrement: true
     },
-    // START: Penambahan user_id
+    // Relasi ke tabel Users (Pemilik Setoran)
     user_id: { 
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
-        model: 'users', // Merujuk ke nama tabel Users
+        model: 'users', // Nama tabel di database
         key: 'id'
       },
-      onDelete: 'CASCADE' // Opsional: Jika user dihapus, setoran yang dia buat juga dihapus
+      onDelete: 'CASCADE' 
     },
-    // END: Penambahan user_id
-    tanggal: { // "Tanggal"
+    tanggal: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW
     },
-    status: { // "Status"
+    status: {
       type: DataTypes.ENUM('menunggu', 'ditolak', 'selesai'),
       defaultValue: 'menunggu'
     },
-    lokasi: { // "Lokasi"
+    lokasi: {
       type: DataTypes.STRING,
       allowNull: true
     },
-    sampahId: { // "sampah_id" (FK ke tabel Sampahs)
+    /**
+     * PENAMBAHAN KOLOM BARU: total_koin
+     * Digunakan untuk menyimpan nominal koin secara permanen (Snapshot).
+     * Ini memastikan Admin tetap bisa memverifikasi poin meskipun 
+     * data di tabel sampahs sudah di-Hard Delete.
+     */
+    total_koin: {
       type: DataTypes.INTEGER,
-      allowNull: false,
+      defaultValue: 0,
+      allowNull: false
+    },
+    /**
+     * PERUBAHAN KRUSIAL: sampahId
+     * 1. allowNull: true agar baris setoran tidak hancur saat sampah dihapus.
+     * 2. onDelete: 'SET NULL' agar riwayat tetap ada meski baris sampah asli hilang.
+     */
+    sampahId: { 
+      type: DataTypes.INTEGER,
+      allowNull: true, 
       references: {
-        model: 'sampahs',
+        model: 'sampahs', // Nama tabel di database
         key: 'id'
       },
-      onDelete: 'CASCADE' // Jika data sampah dihapus, setoran ikut terhapus
+      onDelete: 'SET NULL' 
     }
-    // createdAt & updatedAt otomatis dibuat oleh Sequelize
   }, {
     tableName: 'setorans',
     timestamps: true

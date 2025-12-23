@@ -1,8 +1,10 @@
-const { Setoran, Sampah, User } = require('../models');
+const { Setoran, Sampah, User, sequelize } = require('../models');
 
 module.exports = {
-  // 1. TAMBAH PENYETORAN
+  // 1. TAMBAH PENYETORAN (Logika Hard Delete & Snapshot Koin Permanen)
   createSetoran: async (req, res) => {
+    const t = await sequelize.transaction(); 
+
     try {
       const { sampahIds, lokasi, tanggal } = req.body;
       const userId = req.user.id; 
@@ -18,30 +20,42 @@ module.exports = {
         const sampahExists = await Sampah.findByPk(sId);
         
         if (sampahExists) {
+          // SNAPSHOT: Ambil nilai koin sebelum data sampah dihapus
+          const koinSnapshot = sampahExists.coin || 0;
+
+          // Buat record baru di tabel setorans
           const newSetoran = await Setoran.create({
             user_id: userId,
             sampahId: sId,
+            total_koin: koinSnapshot, // Menyimpan koin secara permanen di kolom baru
             lokasi: lokasi,
             tanggal: tanggal || new Date(),
             status: 'menunggu'
-          });
+          }, { transaction: t });
+
+          // HARD DELETE: Menghapus data dari tabel sampahs
+          await sampahExists.destroy({ transaction: t });
+
           results.push(newSetoran);
         }
       }
 
+      await t.commit();
+
       res.status(201).json({
-        message: 'Data sampah berhasil dipindahkan ke tabel setoran',
+        message: 'Setoran berhasil dibuat dan data sampah telah dibersihkan',
         jumlah_dipindahkan: results.length,
         data: results
       });
 
     } catch (error) {
+      await t.rollback();
       console.error('ERROR CREATE SETORAN:', error);
       res.status(500).json({ message: 'Gagal memproses setoran', error: error.message });
     }
   },
 
-  // 2. LIHAT RIWAYAT
+  // 2. LIHAT RIWAYAT (DIPERBAIKI AGAR MENGIRIM total_koin)
   listSetoran: async (req, res) => {
     try {
       const userId = req.user.id;
@@ -51,6 +65,7 @@ module.exports = {
 
       const data = await Setoran.findAll({
         where: filter,
+        attributes: ['id', 'user_id', 'sampahId', 'lokasi', 'tanggal', 'status', 'total_koin'], // Pastikan total_koin ikut dikirim
         include: [
           {
             model: Sampah,
@@ -72,54 +87,42 @@ module.exports = {
     }
   },
 
-  // 3. UPDATE STATUS (LOGIKA UTAMA VERIFIKASI)
+  // 3. UPDATE STATUS (LOGIKA VERIFIKASI ADMIN - POIN AMAN)
   updateStatus: async (req, res) => {
     try {
       const { id } = req.params; 
       let { status } = req.body;
 
-      // Log untuk pengecekan di terminal Node.js
-      console.log(`[Galaloc.std Log] Mencoba update Setoran ID: ${id} ke Status: ${status}`);
-
       if (!status) {
         return res.status(400).json({ message: 'Status tidak boleh kosong' });
       }
 
-      status = status.toLowerCase(); // Pastikan 'selesai' atau 'ditolak'
+      status = status.toLowerCase(); 
 
-      // Cari setoran berdasarkan ID
-      const setoran = await Setoran.findByPk(id, {
-        include: [{ model: Sampah, as: 'sampah' }]
-      });
+      const setoran = await Setoran.findByPk(id);
 
       if (!setoran) {
-        console.log(`[Galaloc.std Log] Setoran ID ${id} tidak ditemukan di database.`);
         return res.status(404).json({ message: 'Data setoran tidak ditemukan' });
       }
 
       const oldStatus = setoran.status;
 
-      // LOGIKA POIN: Hanya jika status berubah menjadi 'selesai'
+      // LOGIKA POIN: Menggunakan kolom total_koin ( Snapshot )
       if (status === 'selesai' && oldStatus !== 'selesai') {
         const user = await User.findByPk(setoran.user_id);
         
-        if (user && setoran.sampah) {
-          const koinMasuk = parseFloat(setoran.sampah.coin) || 0;
+        if (user) {
+          // Mengambil dari snapshot koin yang kita simpan saat create
+          const koinMasuk = parseFloat(setoran.total_koin) || 0;
           const poinLama = parseFloat(user.total_poin_user) || 0;
           
-          // Proses update poin di tabel User
           await user.update({
             total_poin_user: poinLama + koinMasuk
           });
-          
-          console.log(`[Galaloc.std Log] Poin ditambahkan ke ${user.username}: +${koinMasuk}`);
         }
       }
 
-      // Update status di tabel Setoran
       await setoran.update({ status: status });
-
-      console.log(`[Galaloc.std Log] Status Setoran ID ${id} berhasil diubah menjadi ${status}`);
 
       return res.status(200).json({ 
         message: `Status setoran berhasil diubah menjadi ${status}`,
