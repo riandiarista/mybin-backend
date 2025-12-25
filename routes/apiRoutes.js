@@ -11,6 +11,11 @@ const laporanRoutes = require('./laporan');
 // Jalur: GET /api/auth/me
 router.get('/auth/me', authMiddleware, authController.getProfile);
 
+// --- ENDPOINT FCM TOKEN ---
+// Jalur: PUT /api/update-fcm-token
+// Endpoint ini wajib ada agar MyFirebaseMessagingService.kt bisa menyimpan token ke database
+router.put('/update-fcm-token', authMiddleware, authController.updateFCMToken);
+
 // --- ENDPOINT EDUKASI ---
 router.get('/data', ApiController.getData);
 router.post('/data', ApiController.postData);

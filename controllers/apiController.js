@@ -1,9 +1,11 @@
 // controllers/apiController.js
-const { Edukasi } = require('../models');
+const { Edukasi, User } = require('../models');
+const admin = require('firebase-admin'); // Import firebase-admin untuk mengirim notifikasi
 
 const ApiController = {
     /**
      * Fungsi untuk membuat berita edukasi baru (POST)
+     * Dan mengirim notifikasi ke user 'superbin'
      */
     postData: async (req, res) => {
         try {
@@ -36,9 +38,34 @@ const ApiController = {
                 cover: cover || null
             });
 
+            // 5. KIRIM NOTIFIKASI KE USER 'superbin'
+            try {
+                // Cari user dengan username 'superbin' untuk mendapatkan token FCM-nya
+                const superbin = await User.findOne({ where: { username: 'superbin' } });
+
+                if (superbin && superbin.fcm_token) {
+                    const message = {
+                        notification: {
+                            title: 'Berita Edukasi Baru! 🌿',
+                            body: `Halo Superbin, ada berita baru: "${judul}"`,
+                        },
+                        token: superbin.fcm_token, // Kirim ke token spesifik milik superbin
+                    };
+
+                    // Eksekusi pengiriman via Firebase Admin SDK
+                    const response = await admin.messaging().send(message);
+                    console.log('✅ Notifikasi berhasil dikirim ke Superbin:', response);
+                } else {
+                    console.log('⚠️ Notifikasi tidak dikirim: User superbin tidak ditemukan atau fcm_token kosong.');
+                }
+            } catch (fcmError) {
+                // Kita bungkus try-catch agar jika FCM gagal, data berita tetap tersimpan di DB
+                console.error("❌ Gagal mengirim notifikasi FCM:", fcmError);
+            }
+
             res.status(201).json({
                 status: 'success',
-                message: 'Berita edukasi berhasil diterbitkan!',
+                message: 'Berita edukasi berhasil diterbitkan dan notifikasi dikirim!',
                 data: savedBerita
             });
 

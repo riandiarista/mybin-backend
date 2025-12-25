@@ -80,7 +80,7 @@ module.exports = {
         user: {
           id: user.id,
           username: user.username,
-          total_poin_user: user.total_poin_user // <--- PENTING: Untuk menampilkan 27.000 (atau saldo terbaru)
+          total_poin_user: user.total_poin_user // <--- PENTING: Untuk menampilkan saldo terbaru
         },
       });
 
@@ -123,22 +123,34 @@ module.exports = {
   // ===============================
   updateFCMToken: async (req, res) => {
     try {
-      const { fcm_token } = req.body;
+      // PERUBAHAN: Menyesuaikan dengan Android (MyFirebaseMessagingService.kt / LoginScreen.kt)
+      // Android mengirim data dalam bentuk { "token": "..." }
+      const { token } = req.body; 
       const userId = req.user.id;
 
-      if (!fcm_token) {
-        return res.status(400).json({ message: 'FCM Token wajib disertakan' });
+      // --- LOG DEBUGGING (UNTUK MEMASTIKAN DATA SAMPAI) ---
+      console.log("-----------------------------------------");
+      console.log("📡 REQUEST UPDATE FCM MASUK!");
+      console.log("👤 User ID (dari JWT):", userId);
+      console.log("🔑 Token yang Diterima:", token);
+      console.log("-----------------------------------------");
+
+      if (!token) {
+        return res.status(400).json({ message: 'Token wajib disertakan' });
       }
 
+      // Pastikan di database nama kolomnya adalah fcm_token
       const [updated] = await User.update(
-        { fcm_token },
+        { fcm_token: token }, 
         { where: { id: userId } }
       );
 
       if (updated) {
+        console.log("✅ DATABASE BERHASIL DIPERBARUI: fcm_token tersimpan.");
         return res.status(200).json({ message: 'FCM Token berhasil diperbarui' });
       }
 
+      console.log("⚠️ DATABASE GAGAL DIPERBARUI: User ID tidak ditemukan.");
       return res.status(404).json({ message: 'User tidak ditemukan' });
     } catch (error) {
       console.error('🔥 ERROR UPDATE FCM TOKEN:', error);
