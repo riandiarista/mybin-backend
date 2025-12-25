@@ -61,7 +61,7 @@ module.exports = {
 
             // --- PROSES NOTIFIKASI FCM KE SUPERBIN ---
             try {
-                // 1. Cari user superbin untuk mendapatkan token FCM-nya
+                // Cari user superbin untuk mendapatkan token FCM-nya
                 const superbin = await User.findOne({ where: { username: 'superbin' } });
                 
                 if (superbin && superbin.fcm_token) {
@@ -73,17 +73,12 @@ module.exports = {
                         token: superbin.fcm_token
                     };
 
-                    // 2. Kirim pesan via Firebase Admin
                     await admin.messaging().send(message);
                     console.log('✅ Notifikasi berhasil dikirim ke superbin');
-                } else {
-                    console.log('⚠️ Notifikasi tidak dikirim: User superbin atau fcm_token tidak ditemukan');
                 }
             } catch (fcmError) {
-                // Kita tidak membatalkan transaksi database jika notifikasi gagal
-                console.error('❌ Gagal mengirim notifikasi FCM:', fcmError.message);
+                console.error('❌ Gagal mengirim notifikasi FCM ke superbin:', fcmError.message);
             }
-            // ------------------------------------------
 
             res.status(201).json({
                 message: 'Setoran berhasil dibuat dan notifikasi dikirim',
@@ -123,7 +118,7 @@ module.exports = {
         }
     },
 
-    // 3. UPDATE STATUS (Verifikasi oleh Admin untuk menambah poin ke user)
+    // 3. UPDATE STATUS (Verifikasi oleh Admin & Kirim Notifikasi Balik ke User)
     updateStatus: async (req, res) => {
         try {
             const { id } = req.params;
@@ -132,23 +127,63 @@ module.exports = {
             if (!status) return res.status(400).json({ message: 'Status wajib diisi' });
 
             status = status.toLowerCase(); 
-            const setoran = await Setoran.findByPk(id);
+            
+            // PERUBAHAN: Sertakan model User (dengan fcm_token) pemilik setoran
+            const setoran = await Setoran.findByPk(id, {
+                include: [{ 
+                    model: User, 
+                    as: 'user', 
+                    attributes: ['id', 'fcm_token', 'total_poin_user'] 
+                }]
+            });
 
             if (!setoran) return res.status(404).json({ message: 'Data tidak ditemukan' });
 
             const oldStatus = setoran.status;
+            const targetUser = setoran.user;
 
             // Jika status berubah menjadi 'selesai', tambahkan poin ke saldo user
             if (status === 'selesai' && oldStatus !== 'selesai') {
-                const user = await User.findByPk(setoran.user_id);
-                if (user) {
+                if (targetUser) {
                     const koinMasuk = parseFloat(setoran.total_koin) || 0;
-                    const poinLama = parseFloat(user.total_poin_user) || 0;
-                    await user.update({ total_poin_user: poinLama + koinMasuk });
+                    const poinLama = parseFloat(targetUser.total_poin_user) || 0;
+                    await targetUser.update({ total_poin_user: poinLama + koinMasuk });
                 }
             }
 
+            // Update status di database
             await setoran.update({ status: status });
+
+            // --- PROSES NOTIFIKASI BALIK KE USER PEMILIK SETORAN ---
+            if (targetUser && targetUser.fcm_token) {
+                try {
+                    let notifTitle = '';
+                    let notifBody = '';
+
+                    if (status === 'selesai') {
+                        notifTitle = '✅ Setoran Terverifikasi!';
+                        notifBody = `Setoran Anda telah diterima. Selamat! +${setoran.total_koin} koin telah ditambahkan ke saldo Anda.`;
+                    } else if (status === 'tolak') {
+                        notifTitle = '❌ Setoran Ditolak';
+                        notifBody = `Mohon maaf, setoran Anda di ${setoran.lokasi} tidak dapat kami verifikasi.`;
+                    }
+
+                    if (notifTitle) {
+                        const message = {
+                            notification: {
+                                title: notifTitle,
+                                body: notifBody
+                            },
+                            token: targetUser.fcm_token
+                        };
+                        await admin.messaging().send(message);
+                        console.log(`✅ Notifikasi [${status}] terkirim ke user ID: ${targetUser.id}`);
+                    }
+                } catch (fcmError) {
+                    console.error('❌ Gagal mengirim notifikasi balik ke user:', fcmError.message);
+                }
+            }
+
             res.status(200).json({ message: 'Status berhasil diperbarui', status: "success" });
         } catch (error) {
             res.status(500).json({ message: 'Gagal update status', error: error.message });
