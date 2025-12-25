@@ -30,26 +30,48 @@ module.exports = (sequelize) => {
       allowNull: true
     },
     /**
-     * PENAMBAHAN KOLOM BARU: total_koin
-     * Digunakan untuk menyimpan nominal koin secara permanen (Snapshot).
-     * Ini memastikan Admin tetap bisa memverifikasi poin meskipun 
-     * data di tabel sampahs sudah di-Hard Delete.
+     * Snapshot koin: Menyimpan nominal koin secara permanen.
      */
     total_koin: {
       type: DataTypes.INTEGER,
       defaultValue: 0,
       allowNull: false
     },
+
+    // --- PENAMBAHAN KOLOM SNAPSHOT DETAIL (PINDAHAN DARI TABEL SAMPAH) ---
+    
     /**
-     * PERUBAHAN KRUSIAL: sampahId
-     * 1. allowNull: true agar baris setoran tidak hancur saat sampah dihapus.
-     * 2. onDelete: 'SET NULL' agar riwayat tetap ada meski baris sampah asli hilang.
+     * detail_jenis: Menyimpan gabungan nama jenis sampah (contoh: "Plastik, Kertas").
+     */
+    detail_jenis: {
+      type: DataTypes.STRING,
+      allowNull: true
+    },
+    /**
+     * detail_berat: Menyimpan akumulasi berat sampah yang disetorkan.
+     */
+    detail_berat: {
+      type: DataTypes.FLOAT,
+      defaultValue: 0
+    },
+    /**
+     * detail_foto: Menyimpan string gambar Base64 secara permanen.
+     * Menggunakan TEXT('long') agar mampu menampung ukuran data gambar yang besar.
+     */
+    detail_foto: {
+      type: DataTypes.TEXT('long'),
+      allowNull: true
+    },
+
+    /**
+     * sampahId tetap dipertahankan untuk kompatibilitas sistem lama.
+     * Dibuat allowNull: true agar baris setoran tidak hancur saat sampah asli dihapus.
      */
     sampahId: { 
       type: DataTypes.INTEGER,
       allowNull: true, 
       references: {
-        model: 'sampahs', // Nama tabel di database
+        model: 'sampahs', 
         key: 'id'
       },
       onDelete: 'SET NULL' 
