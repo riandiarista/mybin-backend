@@ -1,7 +1,7 @@
 const { Setoran, Sampah, User, sequelize } = require('../models');
 
 module.exports = {
-  // 1. TAMBAH PENYETORAN (Logika Hard Delete & Snapshot Koin Permanen)
+  // 1. TAMBAH PENYETORAN (Logika Gabungan: Banyak Sampah dalam 1 Setoran)
   createSetoran: async (req, res) => {
     const t = await sequelize.transaction(); 
 
@@ -13,39 +13,47 @@ module.exports = {
         return res.status(400).json({ message: 'Daftar ID Sampah tidak boleh kosong' });
       }
 
+      // Memecah string ID menjadi array
       const idArray = sampahIds.split(',').map(id => id.trim());
-      const results = [];
+      let totalKoinKolektif = 0;
+      let jumlahSampahBerhasil = 0;
 
+      // Loop untuk menghitung total koin dan menghapus data sampah asli
       for (const sId of idArray) {
         const sampahExists = await Sampah.findByPk(sId);
         
         if (sampahExists) {
-          // SNAPSHOT: Ambil nilai koin sebelum data sampah dihapus
-          const koinSnapshot = sampahExists.coin || 0;
+          // SNAPSHOT: Akumulasi nilai koin dari semua sampah yang dipilih
+          totalKoinKolektif += (parseInt(sampahExists.coin) || 0);
 
-          // Buat record baru di tabel setorans
-          const newSetoran = await Setoran.create({
-            user_id: userId,
-            sampahId: sId,
-            total_koin: koinSnapshot, // Menyimpan koin secara permanen di kolom baru
-            lokasi: lokasi,
-            tanggal: tanggal || new Date(),
-            status: 'menunggu'
-          }, { transaction: t });
-
-          // HARD DELETE: Menghapus data dari tabel sampahs
+          // HARD DELETE: Menghapus data dari tabel sampahs sesuai logika awal
           await sampahExists.destroy({ transaction: t });
-
-          results.push(newSetoran);
+          jumlahSampahBerhasil++;
         }
       }
 
+      if (jumlahSampahBerhasil === 0) {
+        await t.rollback();
+        return res.status(404).json({ message: 'Tidak ada data sampah valid yang ditemukan' });
+      }
+
+      // BUAT HANYA SATU record setoran untuk semua sampah tersebut
+      const newSetoran = await Setoran.create({
+        user_id: userId,
+        sampahId: null, // Di-null karena ini setoran gabungan (sampah asli sudah dihapus)
+        total_koin: totalKoinKolektif, // Menyimpan total koin gabungan secara permanen
+        lokasi: lokasi,
+        tanggal: tanggal || new Date(),
+        status: 'menunggu'
+      }, { transaction: t });
+
       await t.commit();
 
+      // PERBAIKAN: Membungkus objek dalam array [ ] agar sinkron dengan model frontend (List<SetoranItem>)
       res.status(201).json({
-        message: 'Setoran berhasil dibuat dan data sampah telah dibersihkan',
-        jumlah_dipindahkan: results.length,
-        data: results
+        message: 'Setoran gabungan berhasil dibuat dan data sampah telah dibersihkan',
+        total_data: 1,
+        data: [newSetoran] 
       });
 
     } catch (error) {
@@ -55,17 +63,18 @@ module.exports = {
     }
   },
 
-  // 2. LIHAT RIWAYAT (DIPERBAIKI AGAR MENGIRIM total_koin)
+  // 2. LIHAT RIWAYAT (Tetap mengirim total_koin snapshot)
   listSetoran: async (req, res) => {
     try {
       const userId = req.user.id;
       const username = req.user.username; 
 
+      // Filter: superbin (admin) bisa melihat semua, user biasa hanya miliknya sendiri
       const filter = (username === 'superbin') ? {} : { user_id: userId };
 
       const data = await Setoran.findAll({
         where: filter,
-        attributes: ['id', 'user_id', 'sampahId', 'lokasi', 'tanggal', 'status', 'total_koin'], // Pastikan total_koin ikut dikirim
+        attributes: ['id', 'user_id', 'sampahId', 'lokasi', 'tanggal', 'status', 'total_koin'],
         include: [
           {
             model: Sampah,
@@ -87,7 +96,7 @@ module.exports = {
     }
   },
 
-  // 3. UPDATE STATUS (LOGIKA VERIFIKASI ADMIN - POIN AMAN)
+  // 3. UPDATE STATUS (Verifikasi Admin - Menambah Poin ke User)
   updateStatus: async (req, res) => {
     try {
       const { id } = req.params; 
@@ -107,12 +116,12 @@ module.exports = {
 
       const oldStatus = setoran.status;
 
-      // LOGIKA POIN: Menggunakan kolom total_koin ( Snapshot )
+      // Jika status diubah ke 'selesai', tambahkan poin ke total_poin_user
       if (status === 'selesai' && oldStatus !== 'selesai') {
         const user = await User.findByPk(setoran.user_id);
         
         if (user) {
-          // Mengambil dari snapshot koin yang kita simpan saat create
+          // Mengambil nilai gabungan dari total_koin (Snapshot)
           const koinMasuk = parseFloat(setoran.total_koin) || 0;
           const poinLama = parseFloat(user.total_poin_user) || 0;
           
@@ -135,7 +144,7 @@ module.exports = {
     }
   },
 
-  // 4. DELETE SETORAN
+  // 4. DELETE SETORAN (Menghapus riwayat setoran)
   deleteSetoran: async (req, res) => {
     try {
       const { id } = req.params;
