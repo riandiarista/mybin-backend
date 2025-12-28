@@ -1,14 +1,14 @@
 const { Setoran, Sampah, User, sequelize } = require('../models');
-const admin = require('firebase-admin'); // Pastikan Firebase sudah diinisialisasi di server.js
+const admin = require('firebase-admin'); 
 
 module.exports = {
-    // 1. TAMBAH PENYETORAN (Snapshot Detail, Hard Delete, & Notifikasi ke Superbin)
+    
     createSetoran: async (req, res) => {
         const t = await sequelize.transaction();
         try {
             const { sampahIds, lokasi, tanggal } = req.body;
             const userId = req.user.id;
-            const currentUsername = req.user.username; // Mengambil username pengirim
+            const currentUsername = req.user.username; 
 
             if (!sampahIds) {
                 return res.status(400).json({ message: 'Daftar ID Sampah tidak boleh kosong' });
@@ -21,7 +21,7 @@ module.exports = {
             let snapshotFoto = null;
             let jumlahSampahBerhasil = 0;
 
-            // Proses pemindahan data dari tabel Sampah ke snapshot Setoran
+            
             for (const sId of idArray) {
                 const sampahExists = await Sampah.findByPk(sId);
                 
@@ -30,10 +30,10 @@ module.exports = {
                     snapshotJenis.push(sampahExists.jenis);
                     snapshotBerat += parseFloat(sampahExists.berat || 0);
                     
-                    // Ambil foto pertama sebagai perwakilan cover setoran
+                    
                     if (!snapshotFoto) snapshotFoto = sampahExists.foto;
 
-                    // HARD DELETE: Menghapus data asli agar "Sampahku" bersih
+                    
                     await sampahExists.destroy({ transaction: t });
                     jumlahSampahBerhasil++;
                 }
@@ -44,7 +44,7 @@ module.exports = {
                 return res.status(404).json({ message: 'Tidak ada data sampah valid' });
             }
 
-            // Simpan data setoran ke database
+            
             const newSetoran = await Setoran.create({
                 user_id: userId,
                 sampahId: null,
@@ -59,9 +59,9 @@ module.exports = {
 
             await t.commit();
 
-            // --- PROSES NOTIFIKASI FCM KE SUPERBIN ---
+            
             try {
-                // Cari user superbin untuk mendapatkan token FCM-nya
+                
                 const superbin = await User.findOne({ where: { username: 'superbin' } });
                 
                 if (superbin && superbin.fcm_token) {
@@ -92,7 +92,7 @@ module.exports = {
         }
     },
 
-    // 2. LIHAT RIWAYAT (Admin 'superbin' melihat semua, User melihat miliknya sendiri)
+    
     listSetoran: async (req, res) => {
         try {
             const userId = req.user.id;
@@ -118,7 +118,7 @@ module.exports = {
         }
     },
 
-    // 3. UPDATE STATUS (Verifikasi oleh Admin & Kirim Notifikasi Balik ke User)
+    
     updateStatus: async (req, res) => {
         try {
             const { id } = req.params;
@@ -128,7 +128,7 @@ module.exports = {
 
             status = status.toLowerCase(); 
             
-            // PERUBAHAN: Sertakan model User (dengan fcm_token) pemilik setoran
+            
             const setoran = await Setoran.findByPk(id, {
                 include: [{ 
                     model: User, 
@@ -142,7 +142,7 @@ module.exports = {
             const oldStatus = setoran.status;
             const targetUser = setoran.user;
 
-            // Jika status berubah menjadi 'selesai', tambahkan poin ke saldo user
+            
             if (status === 'selesai' && oldStatus !== 'selesai') {
                 if (targetUser) {
                     const koinMasuk = parseFloat(setoran.total_koin) || 0;
@@ -151,10 +151,10 @@ module.exports = {
                 }
             }
 
-            // Update status di database
+            
             await setoran.update({ status: status });
 
-            // --- PROSES NOTIFIKASI BALIK KE USER PEMILIK SETORAN ---
+            
             if (targetUser && targetUser.fcm_token) {
                 try {
                     let notifTitle = '';
@@ -190,7 +190,7 @@ module.exports = {
         }
     },
 
-    // 4. DELETE SETORAN
+    
     deleteSetoran: async (req, res) => {
         try {
             const { id } = req.params;
