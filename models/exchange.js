@@ -9,21 +9,21 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.INTEGER,
             allowNull: false,
             references: {
-                model: 'Users', // Pastikan nama tabel user Anda benar
+                model: 'Users', 
                 key: 'id'
             }
         },
         amount_poin: {
-            // Menggunakan INTEGER karena poin biasanya tidak memiliki desimal
+            
             type: DataTypes.INTEGER,
             allowNull: false,
         },
         amount_rupiah: { 
-            // Menggunakan INTEGER karena perbandingan 1:1 (Rp 1.000, dst)
+            
             type: DataTypes.INTEGER,
             allowNull: false,
         },
-        phone_number: { // PERUBAHAN: Pengganti bank_detail
+        phone_number: { 
             type: DataTypes.STRING,
             allowNull: false,
         },
@@ -33,17 +33,17 @@ module.exports = (sequelize, DataTypes) => {
             allowNull: false,
         },
         status: {
-            // Menambahkan 'Pending' agar ada proses verifikasi admin
+            
             type: DataTypes.ENUM('Pending', 'Berhasil', 'Gagal'), 
             defaultValue: 'Pending', 
             allowNull: false,
         }
     }, {
         freezeTableName: true,
-        timestamps: true // Sangat disarankan untuk audit data di Galaloc.std
+        timestamps: true 
     });
 
-    // Menambahkan relasi agar bisa di-join dengan tabel User
+    
     Exchange.associate = (models) => {
         Exchange.belongsTo(models.User, { foreignKey: 'user_id', as: 'user' });
     };

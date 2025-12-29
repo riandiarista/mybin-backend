@@ -7,15 +7,15 @@ module.exports = (sequelize) => {
       primaryKey: true,
       autoIncrement: true
     },
-    // Menghubungkan data sampah dengan pemiliknya (User)
+    
     user_id: { 
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
-        model: 'users', // Merujuk ke nama tabel Users
+        model: 'users', 
         key: 'id'
       },
-      onDelete: 'CASCADE' // Jika user dihapus, data sampah miliknya otomatis terhapus
+      onDelete: 'CASCADE' 
     },
     jenis: {
       type: DataTypes.STRING,
@@ -37,7 +37,7 @@ module.exports = (sequelize) => {
       defaultValue: 0,
       validate: { isInt: { msg: "Coin harus berupa angka bulat" } }
     },
-    // Status digunakan untuk validasi apakah koin sudah bisa ditukarkan (Exchange)
+    
     status: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -50,16 +50,16 @@ module.exports = (sequelize) => {
         }
       }
     },
-    // PERUBAHAN DI SINI:
-    // Menggunakan TEXT('long') agar database sanggup menyimpan string Base64 dari foto
-    // yang ukurannya sangat besar (ratusan ribu hingga jutaan karakter).
+    
+    
+    
     foto: {
       type: DataTypes.TEXT('long'),
       allowNull: true
     }
   }, {
     tableName: 'sampahs',
-    timestamps: true // Mengaktifkan createdAt & updatedAt otomatis
+    timestamps: true 
   });
 
   return Sampah;

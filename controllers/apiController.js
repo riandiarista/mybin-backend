@@ -1,18 +1,15 @@
-// controllers/apiController.js
+
 const { Edukasi, User } = require('../models');
-const admin = require('firebase-admin'); // Import firebase-admin untuk mengirim notifikasi
+const admin = require('firebase-admin'); 
 
 const ApiController = {
-    /**
-     * Fungsi untuk membuat berita edukasi baru (POST)
-     * Dan mengirim notifikasi ke user 'superbin'
-     */
+    
     postData: async (req, res) => {
         try {
-            // 1. Ambil data dari body request
+            
             const { judul, deskripsi, lokasi, cover } = req.body;
 
-            // 2. Ambil user_id dari req.user (Pastikan authMiddleware bekerja)
+            
             if (!req.user || !req.user.id) {
                 return res.status(401).json({
                     status: 'error',
@@ -21,7 +18,7 @@ const ApiController = {
             }
             const userId = req.user.id;
 
-            // 3. Validasi input dasar
+            
             if (!judul || !judul.trim() || !deskripsi || !deskripsi.trim()) {
                 return res.status(400).json({
                     status: 'error',
@@ -29,7 +26,7 @@ const ApiController = {
                 });
             }
 
-            // 4. Simpan ke Database
+            
             const savedBerita = await Edukasi.create({
                 user_id: userId,
                 judul: judul,
@@ -38,9 +35,9 @@ const ApiController = {
                 cover: cover || null
             });
 
-            // 5. KIRIM NOTIFIKASI KE USER 'superbin'
+            
             try {
-                // Cari user dengan username 'superbin' untuk mendapatkan token FCM-nya
+                
                 const superbin = await User.findOne({ where: { username: 'superbin' } });
 
                 if (superbin && superbin.fcm_token) {
@@ -49,17 +46,17 @@ const ApiController = {
                             title: 'Berita Edukasi Baru! 🌿',
                             body: `Halo Superbin, ada berita baru: "${judul}"`,
                         },
-                        token: superbin.fcm_token, // Kirim ke token spesifik milik superbin
+                        token: superbin.fcm_token, 
                     };
 
-                    // Eksekusi pengiriman via Firebase Admin SDK
+                    
                     const response = await admin.messaging().send(message);
                     console.log('✅ Notifikasi berhasil dikirim ke Superbin:', response);
                 } else {
                     console.log('⚠️ Notifikasi tidak dikirim: User superbin tidak ditemukan atau fcm_token kosong.');
                 }
             } catch (fcmError) {
-                // Kita bungkus try-catch agar jika FCM gagal, data berita tetap tersimpan di DB
+                
                 console.error("❌ Gagal mengirim notifikasi FCM:", fcmError);
             }
 
@@ -84,9 +81,7 @@ const ApiController = {
         }
     },
 
-    /**
-     * Fungsi untuk mengambil semua daftar berita (GET)
-     */
+    
     getData: async (req, res) => {
         try {
             const listBerita = await Edukasi.findAll({
@@ -107,15 +102,13 @@ const ApiController = {
         }
     },
 
-    /**
-     * Fungsi untuk memperbarui berita edukasi (PUT)
-     */
+    
     updateData: async (req, res) => {
         try {
             const { id } = req.params; 
             const { judul, deskripsi, lokasi, cover } = req.body;
 
-            // 1. Cari berita berdasarkan ID
+            
             const berita = await Edukasi.findByPk(id);
             if (!berita) {
                 return res.status(404).json({
@@ -124,7 +117,7 @@ const ApiController = {
                 });
             }
 
-            // 2. Validasi input
+            
             if (!judul || !judul.trim() || !deskripsi || !deskripsi.trim()) {
                 return res.status(400).json({
                     status: 'error',
@@ -132,7 +125,7 @@ const ApiController = {
                 });
             }
 
-            // 3. Eksekusi Update
+            
             await berita.update({
                 judul: judul,
                 deskripsi: deskripsi,
@@ -161,9 +154,7 @@ const ApiController = {
         }
     },
 
-    /**
-     * Fungsi untuk menghapus berita (DELETE)
-     */
+    
     deleteData: async (req, res) => {
         try {
             const { id } = req.params;

@@ -11,7 +11,7 @@ module.exports = (sequelize) => {
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
-        model: 'users', // Merujuk ke tableName 'users' 
+        model: 'users', 
         key: 'id'
       },
       onUpdate: 'CASCADE',
@@ -36,11 +36,11 @@ module.exports = (sequelize) => {
       }
     },
     cover: {
-      type: DataTypes.STRING, // Menyimpan path atau URL gambar 
+      type: DataTypes.STRING, 
       allowNull: true,
-      // PERBAIKAN: Menghapus isUrl sepenuhnya agar bisa menerima URI Android (content://...)
+      
       validate: {
-        // Cukup biarkan kosong atau tambahkan validasi lain jika perlu
+        
       }
     },
     lokasi: {
@@ -48,16 +48,16 @@ module.exports = (sequelize) => {
       allowNull: true
     }
   }, {
-    tableName: 'edukasi', // Konsisten dengan skema database 
-    timestamps: true      // Mengotomatiskan createdAt dan updatedAt 
+    tableName: 'edukasi', 
+    timestamps: true      
   });
 
-  // Definisi Relasi
+  
   Edukasi.associate = (models) => {
-    // Menghubungkan Edukasi ke User (Penulis Berita)
+    
     Edukasi.belongsTo(models.User, {
       foreignKey: 'user_id',
-      as: 'penulis' // Alias untuk digunakan saat query (e.g., include: 'penulis')
+      as: 'penulis' 
     });
   };
 

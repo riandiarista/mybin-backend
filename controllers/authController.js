@@ -4,9 +4,9 @@ const { v4: uuidv4 } = require('uuid');
 const { User } = require('../models');
 
 module.exports = {
-  // ===============================
-  // REGISTER USER BARU
-  // ===============================
+  
+  
+  
   register: async (req, res, next) => {
     try {
       const { username, password } = req.body;
@@ -15,16 +15,16 @@ module.exports = {
         return res.status(400).json({ message: 'Username dan password wajib diisi' });
       }
 
-      // Cek apakah user sudah ada
+      
       const existingUser = await User.findOne({ where: { username } });
       if (existingUser) {
         return res.status(400).json({ message: 'Username sudah digunakan' });
       }
 
-      // Hash password
+      
       const hashedPassword = await bcrypt.hash(password, 10);
       
-      // Saat register, total_poin_user otomatis 0 (sesuai default value di database)
+      
       const newUser = await User.create({ 
         username, 
         password: hashedPassword,
@@ -43,9 +43,9 @@ module.exports = {
     }
   },
 
-  // ===============================
-  // LOGIN USER
-  // ===============================
+  
+  
+  
   login: async (req, res, next) => {
     try {
       const { username, password } = req.body;
@@ -54,33 +54,33 @@ module.exports = {
         return res.status(400).json({ message: 'Username dan password wajib diisi' });
       }
 
-      // Cari user di database
+      
       const user = await User.findOne({ where: { username } });
       if (!user) {
         return res.status(404).json({ message: 'User tidak ditemukan' });
       }
 
-      // Bandingkan password
+      
       const isMatch = await bcrypt.compare(password, user.password);
       if (!isMatch) {
         return res.status(401).json({ message: 'Password salah' });
       }
 
-      // Buat token JWT 
+      
       const token = jwt.sign(
         { id: user.id, username: user.username },
         'secret_key', 
         { expiresIn: '1h', jwtid: uuidv4(), algorithm: 'HS256' }
       );
 
-      // RESPON: Sekarang menyertakan total_poin_user agar saldo muncul otomatis di Android
+      
       res.json({
         message: 'Login berhasil',
         token,
         user: {
           id: user.id,
           username: user.username,
-          total_poin_user: user.total_poin_user // <--- PENTING: Untuk menampilkan saldo terbaru
+          total_poin_user: user.total_poin_user 
         },
       });
 
@@ -91,13 +91,13 @@ module.exports = {
     }
   },
 
-  // ===============================
-  // GET PROFILE (FUNGSI UNTUK SINKRONISASI REAL-TIME)
-  // ===============================
-  // Digunakan oleh Android (via loadUserBalance) untuk mengambil data dari tabel users
+  
+  
+  
+  
   getProfile: async (req, res) => {
     try {
-      // req.user.id didapatkan dari authMiddleware (JWT Decode)
+      
       const userId = req.user.id;
       
       const user = await User.findByPk(userId, {
@@ -110,7 +110,7 @@ module.exports = {
 
       res.json({
         message: 'Success',
-        data: user // Mengirimkan saldo terbaru dari kolom total_poin_user
+        data: user 
       });
     } catch (error) {
       console.error('🔥 ERROR GET PROFILE:', error);
@@ -118,17 +118,17 @@ module.exports = {
     }
   },
 
-  // ===============================
-  // UPDATE FCM TOKEN
-  // ===============================
+  
+  
+  
   updateFCMToken: async (req, res) => {
     try {
-      // PERUBAHAN: Menyesuaikan dengan Android (MyFirebaseMessagingService.kt / LoginScreen.kt)
-      // Android mengirim data dalam bentuk { "token": "..." }
+      
+      
       const { token } = req.body; 
       const userId = req.user.id;
 
-      // --- LOG DEBUGGING (UNTUK MEMASTIKAN DATA SAMPAI) ---
+      
       console.log("-----------------------------------------");
       console.log("📡 REQUEST UPDATE FCM MASUK!");
       console.log("👤 User ID (dari JWT):", userId);
@@ -139,7 +139,7 @@ module.exports = {
         return res.status(400).json({ message: 'Token wajib disertakan' });
       }
 
-      // Pastikan di database nama kolomnya adalah fcm_token
+      
       const [updated] = await User.update(
         { fcm_token: token }, 
         { where: { id: userId } }
